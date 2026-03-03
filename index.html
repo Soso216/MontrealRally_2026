@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>WordCraft: Las 8 Crónicas Pro</title>
+    <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Special+Elite&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --oro: #d4af37; --pergamino: #f4e4bc; --sangre: #8b0000; --madera: #2c1e14; --pasto: #2e7d32; }
+        body { background: var(--madera) url('https://www.transparenttextures.com/patterns/dark-wood.png'); color: #3e2723; font-family: 'Special Elite', serif; display: flex; justify-content: center; padding: 20px; min-height: 100vh; }
+        .pergamino { background: var(--pergamino) url('https://www.transparenttextures.com/patterns/paper-fibers.png'); padding: 40px; border-radius: 5px; width: 100%; max-width: 900px; box-shadow: 0 0 60px rgba(0,0,0,0.9); border: 15px solid #5d4037; position: relative; }
+        h1 { font-family: 'MedievalSharp', cursive; text-align: center; color: var(--sangre); font-size: 3rem; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        #timer { font-size: 3rem; text-align: center; color: var(--sangre); margin: 10px 0; font-family: 'MedievalSharp'; border-bottom: 2px double var(--sangre); }
+        .mision-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .mision-card { background: rgba(0,0,0,0.05); border: 2px solid #8d6e63; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.3s; position: relative; }
+        .mision-card:hover { transform: scale(1.03); border-color: var(--oro); background: rgba(212, 175, 55, 0.1); }
+        .completada { background: #e8f5e9 !important; border-color: var(--pasto) !important; }
+        .btn { font-family: 'MedievalSharp', cursive; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; text-transform: uppercase; padding: 12px 20px; transition: 0.2s; }
+        .btn-principal { background: var(--sangre); color: white; font-size: 1.2rem; width: 100%; margin-top: 10px; box-shadow: 0 4px #5a0000; }
+        .btn-principal:active { transform: translateY(2px); box-shadow: none; }
+        .instrucciones-box { background: rgba(255,255,255,0.7); border-left: 5px solid var(--oro); padding: 20px; margin: 20px 0; border-radius: 0 10px 10px 0; }
+        .obj-ok { color: var(--pasto); font-weight: bold; }
+        .obj-fail { color: #b71c1c; font-style: italic; opacity: 0.7; }
+        input[type="text"] { width: 100%; padding: 15px; border: 2px solid #8d6e63; border-radius: 8px; font-size: 1.3rem; text-align: center; box-sizing: border-box; background: rgba(255,255,255,0.5); font-family: 'Special Elite'; }
+        .header-mision { color: var(--sangre); border-bottom: 1px solid var(--oro); padding-bottom: 5px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="pergamino">
+    <h1>⚔️ WORDCRAFT  ⚔️</h1>
+    <p style="text-align:center; font-style:italic">Colegio Montreal - Rally 1° de Secundaria </p>
+    
+    <div id="timer">00:00</div>
+    
+    <div id="pantalla-registro">
+        <input type="text" id="nombreEquipo" placeholder="NOMBRE DE TU GREMIO (EQUIPO)...">
+        <button class="btn btn-principal" onclick="comenzarRally()">COMENZAR LA GESTA</button>
+    </div>
+
+    <div id="pantalla-mapa" style="display:none">
+        <h3 style="text-align:center; font-family:'MedievalSharp'">EL MAPA DEL REINO</h3>
+        <div id="lista-misiones" class="mision-grid"></div>
+    </div>
+
+    <div id="area-trabajo" style="display:none">
+        <button onclick="irAlMapa()" style="background:none; border:none; color:var(--sangre); cursor:pointer; font-weight:bold; font-family:'MedievalSharp'">⬅ ABANDONAR MISIÓN</button>
+        <div class="instrucciones-box">
+            <h2 id="titulo-mision" class="header-mision"></h2>
+            <p id="desc-mision" style="font-size: 0.9rem; color: #5d4037;"></p>
+            <hr>
+            <strong style="color:var(--sangre)">📜 PERGAMINO DE REQUISITOS (7):</strong>
+            <ul id="guia-pasos" style="font-size: 0.85rem; margin-top: 10px;"></ul>
+        </div>
+        <button class="btn" style="background:#5d4037; color:white; width:100%" onclick="descargarBase()">1. OBTENER MANUSCRITO BASE</button>
+        <div style="margin-top:20px; border:2px dashed var(--sangre); padding:20px; text-align:center; border-radius:10px">
+            <strong style="color:var(--sangre)">2. ENTREGA DE OBRA TERMINADA</strong><br><br>
+            <input type="file" id="archivoInput" accept=".docx"><br><br>
+            <button class="btn btn-principal" onclick="procesarEntrega()">CALIFICAR GESTA</button>
+        </div>
+        <div id="feedback" style="display:none; margin-top:20px; padding:15px; background:white; border:2px double var(--oro); border-radius:5px"></div>
+    </div>
+
+    <button id="btnExcel" class="btn" style="display:none; width:100%; margin-top:20px; background:var(--pasto); color:white" onclick="exportarResultados()">📥 DESCARGAR REPORTE FINAL DE PUNTOS</button>
+</div>
+
+<script>
+let resultadosRally = [];
+let misionActualIdx = null;
+let tiempoInicio = null;
+let cronoInterval = null;
+
+// --- CONFIGURACIÓN DE MISIONES (7 OBJETIVOS CADA UNA) ---
+const misiones = [
+    { id: "E1", titulo: "El Edicto Real", desc: "El Rey Arturo exige un documento de Estado impecable.", 
+        pasos: ["Título en Negrita y Mayúsculas", "Fuente Times New Roman o Arial", "Color Azul Oscuro", "Texto Centrado", "Interlineado 1.5", "Doble Subrayado en fechas", "Borde de Página"], 
+        link: "#", objs: ["strong", "font-family", "color:#000080", "text-align:center", "line-height:1.5", "text-decoration:underline double", "border"] },
+    
+    { id: "E2", titulo: "Censo de Aldeanos", desc: "Organiza a la población en una estructura de datos noble.", 
+        pasos: ["Tabla de 6x8", "Combinar celdas en Título", "Estilo de tabla colorido", "Texto centrado vertical", "Bordes externos gruesos", "Sombreado de filas", "Encabezado resaltado"], 
+        link: "#", objs: ["table", "colspan", "table-style", "vertical-align", "border-width", "background-color", "th"] },
+    
+    { id: "E3", titulo: "Bestiario Real", desc: "Captura la esencia de las bestias con arte digital.", 
+        pasos: ["Insertar 2 Imágenes", "Ajuste 'Arriba y abajo'", "Recortar en forma de círculo", "Efecto artístico", "Título de ilustración", "Quitar fondo (o borde suave)", "Tamaño exacto 5cm"], 
+        link: "#", objs: ["img", "wrap-type:topbottom", "clip-path:circle", "filter", "figcaption", "background-remove", "width:5cm"] },
+    
+    { id: "E4", titulo: "Código de Honor", desc: "Las leyes del Reino deben ser claras y jerárquicas.", 
+        pasos: ["Lista Multinivel (1.1, 1.2)", "Viñeta de Símbolo Especial", "Sangría 1.27cm", "Letra Capital (3 líneas)", "Espaciado 12 pto", "Cursiva en citas", "Margen Estrecho"], 
+        link: "#", objs: ["ol li ol", "➢", "margin-left:1.27", "initial-letter", "margin-bottom:12", "em", "margin:1.27"] },
+
+    { id: "E5", titulo: "Alquimia Pro", desc: "Documenta las fórmulas secretas con precisión científica.", 
+        pasos: ["Ecuación Compleja", "Superíndices (x²)", "Subíndices (H₂O)", "Símbolos Ω o Σ", "Lista con Tabulaciones", "Resaltado Amarillo", "Nota al Pie"], 
+        link: "#", objs: ["math", "sup", "sub", "symbol", "tab", "mark", "footnote"] },
+
+    { id: "E6", titulo: "Crónica Real", desc: "Diseña el diario más importante del Castillo.", 
+        pasos: ["3 Columnas", "Línea divisoria", "Letra Capital", "Orientación Horizontal", "Número de página", "Marca de Agua", "Encabezado con Fecha"], 
+        link: "#", objs: ["column-count:3", "column-rule", "drop-cap", "landscape", "page-number", "watermark", "header"] },
+
+    { id: "E7", titulo: "Mapa del Oro", desc: "Estructura las pistas con diagramas avanzados.", 
+        pasos: ["SmartArt (Proceso)", "Forma de 'Llamada'", "Agrupar 2 formas", "Relleno con Textura", "Hipervínculo a Mapa", "Cuadro Girado 45°", "Sombra en Formas"], 
+        link: "#", objs: ["smartart", "callout", "group", "texture", "href", "rotate:45", "box-shadow"] },
+
+    { id: "E8", titulo: "Tratado de Paz", desc: "Sella la alianza eterna con formalidad absoluta.", 
+        pasos: ["Línea de Firma", "Texto Justificado", "Guiones automáticos", "Salto de Sección", "Contraseña (o texto cifrado)", "Fecha Automática", "Firma en Cursiva"], 
+        link: "#", objs: ["signature", "text-align:justify", "hyphens", "section-break", "password", "date", "cursive"] }
+];
+
+function comenzarRally() {
+    const nombre = document.getElementById('nombreEquipo').value;
+    if(!nombre || nombre.length < 3) { alert("¡Identifica a tu Gremio con al menos 3 letras!"); return; }
+    document.getElementById('pantalla-registro').style.display = 'none';
+    document.getElementById('pantalla-mapa').style.display = 'block';
+    renderMapa();
+}
+
+function renderMapa() {
+    const grid = document.getElementById('lista-misiones');
+    grid.innerHTML = "";
+    misiones.forEach((m, i) => {
+        const hecha = resultadosRally.find(r => r.Ejercicio === m.id);
+        grid.innerHTML += `
+            <div class="mision-card ${hecha?'completada':''}" onclick="abrirMision(${i})">
+                <span style="font-size:0.7rem; color:var(--sangre)">ORDEN ${m.id}</span><br>
+                <strong>${m.titulo}</strong><br>
+                <small>${hecha ? '✨ LOGRADA ✨' : '⚔️ INICIAR'}</small>
+            </div>`;
+    });
+}
+
+function abrirMision(i) {
+    misionActualIdx = i;
+    const m = misiones[i];
+    document.getElementById('pantalla-mapa').style.display = 'none';
+    document.getElementById('area-trabajo').style.display = 'block';
+    document.getElementById('titulo-mision').innerText = m.titulo;
+    document.getElementById('desc-mision').innerText = m.desc;
+    document.getElementById('guia-pasos').innerHTML = m.pasos.map(p => `<li>${p}</li>`).join('');
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('archivoInput').value = ""; // Limpiar input
+    
+    tiempoInicio = Date.now();
+    if(cronoInterval) clearInterval(cronoInterval);
+    cronoInterval = setInterval(actualizarCrono, 1000);
+}
+
+function actualizarCrono() {
+    let s = Math.floor((Date.now() - tiempoInicio) / 1000);
+    document.getElementById('timer').innerText = `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+}
+
+function irAlMapa() {
+    clearInterval(cronoInterval);
+    document.getElementById('area-trabajo').style.display = 'none';
+    document.getElementById('pantalla-mapa').style.display = 'block';
+    renderMapa();
+}
+
+async function procesarEntrega() {
+    const file = document.getElementById('archivoInput').files[0];
+    if(!file) { alert("¡Debes subir el manuscrito para que el Escriba lo revise!"); return; }
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const { value: html } = await mammoth.convertToHtml({ arrayBuffer: e.target.result });
+        const m = misiones[misionActualIdx];
+        let aciertos = 0;
+        let feedbackHTML = "<strong>INFORME DEL ESCRIBA:</strong><br><ul style='list-style:none; padding:0; font-size:0.8rem'>";
+
+        m.objs.forEach((obj, idx) => {
+            const paso = html.toLowerCase().includes(obj.toLowerCase());
+            if(paso) { aciertos++; feedbackHTML += `<li class="obj-ok">✓ ${m.pasos[idx]}</li>`; }
+            else { feedbackHTML += `<li class="obj-fail">✗ ${m.pasos[idx]} (Falta o incorrecto)</li>`; }
+        });
+
+        const calif = Math.round((aciertos / m.objs.length) * 100);
+        feedbackHTML += `</ul><hr><strong>CALIFICACIÓN: ${calif}/100</strong>`;
+        
+        document.getElementById('feedback').innerHTML = feedbackHTML;
+        document.getElementById('feedback').style.display = 'block';
+
+        // Guardar resultado (si sacó más de 0)
+        if(calif > 0) {
+            resultadosRally = resultadosRally.filter(r => r.Ejercicio !== m.id); // Evitar duplicados
+            resultadosRally.push({ 
+                Equipo: document.getElementById('nombreEquipo').value, 
+                Ejercicio: m.id, 
+                Puntaje: calif, 
+                Tiempo: document.getElementById('timer').innerText 
+            });
+            document.getElementById('btnExcel').style.display = 'block';
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function descargarBase() { 
+    const link = misiones[misionActualIdx].link;
+    if(link === "#") alert("¡Atención! Debes colocar el link real de Google Docs en el código.");
+    else window.open(link, '_blank'); 
+}
+
+function exportarResultados() {
+    const ws = XLSX.utils.json_to_sheet(resultadosRally);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Puntajes");
+    XLSX.writeFile(wb, "Rally_Montreal_Resultados.xlsx");
+}
+</script>
+</body>
+</html>
